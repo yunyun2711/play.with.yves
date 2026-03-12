@@ -984,8 +984,8 @@ def dashboard():
         .value.mono {{ font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--accent); }}
 
         .truncate {{
-        word-break: break-word;
-        max-width: 300px;
+            word-break: break-word;
+            max-width: 300px;
         }}
 
         .log-pulse {{
@@ -1052,8 +1052,10 @@ def dashboard():
     </div>
 </body>
 </html>"""
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
 
 
