@@ -3,6 +3,7 @@ import os
 import socket
 import platform
 import json
+import pytz
 from datetime import datetime
 
 app = Flask(__name__)
@@ -983,10 +984,8 @@ def dashboard():
         .value.mono {{ font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--accent); }}
 
         .truncate {{
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 220px;
+        word-break: break-word;
+        max-width: 300px;
         }}
 
         .log-pulse {{
@@ -1056,4 +1055,5 @@ def dashboard():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
 
