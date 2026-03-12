@@ -739,27 +739,321 @@ def send_data():
 
 @app.route('/panel-yves-monitor')
 def dashboard():
-
     try:
         with open("logs.json") as f:
             logs = json.load(f)
     except:
         logs = []
 
-    html = "<h1>Panel de monitoreo - Yves</h1>"
-
-    for log in logs:
-        html += f"""
-        <p>
-        IP: {log['ip']} <br>
-        Sistema: {log['platform']} <br>
-        Navegador: {log['agent']} <br>
-        Hora: {log['time']} <br>
-        </p>
-        <hr>
+    log_cards = ""
+    for i, log in enumerate(logs):
+        log_cards += f"""
+        <div class="log-card" style="animation-delay: {i * 0.06}s">
+            <div class="log-index">#{str(i+1).zfill(3)}</div>
+            <div class="log-grid">
+                <div class="log-field">
+                    <span class="label">IP</span>
+                    <span class="value mono">{log.get('ip', '—')}</span>
+                </div>
+                <div class="log-field">
+                    <span class="label">SISTEMA</span>
+                    <span class="value">{log.get('platform', '—')}</span>
+                </div>
+                <div class="log-field">
+                    <span class="label">NAVEGADOR</span>
+                    <span class="value truncate">{log.get('agent', '—')}</span>
+                </div>
+                <div class="log-field">
+                    <span class="label">HORA</span>
+                    <span class="value mono">{log.get('time', '—')}</span>
+                </div>
+            </div>
+            <div class="log-pulse"></div>
+        </div>
         """
 
-    return html
+    empty_state = "" if logs else """
+        <div class="empty">
+            <div class="empty-icon">⬡</div>
+            <p>Sin registros todavía</p>
+        </div>
+    """
+
+    return f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor · Yves</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+
+        :root {{
+            --bg: #080b0f;
+            --surface: #0e1318;
+            --border: #1c2530;
+            --border-bright: #2a3a4a;
+            --accent: #00e5ff;
+            --accent-dim: rgba(0, 229, 255, 0.12);
+            --accent-glow: rgba(0, 229, 255, 0.25);
+            --text: #c8d8e8;
+            --text-dim: #4a6070;
+            --text-bright: #eef4fa;
+            --red: #ff4560;
+            --green: #00e096;
+        }}
+
+        body {{
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Syne', sans-serif;
+            min-height: 100vh;
+            padding: 40px 24px 80px;
+            background-image:
+                radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0,229,255,0.07) 0%, transparent 60%),
+                repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(255,255,255,0.015) 40px),
+                repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(255,255,255,0.015) 40px);
+        }}
+
+        .mono {{ font-family: 'IBM Plex Mono', monospace; }}
+
+        header {{
+            max-width: 900px;
+            margin: 0 auto 48px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }}
+
+        .header-left {{ display: flex; flex-direction: column; gap: 4px; }}
+
+        .header-tag {{
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--accent);
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }}
+
+        h1 {{
+            font-size: clamp(22px, 4vw, 32px);
+            font-weight: 800;
+            color: var(--text-bright);
+            letter-spacing: -0.02em;
+        }}
+
+        h1 span {{ color: var(--accent); }}
+
+        .live-indicator {{
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--green);
+        }}
+
+        .live-dot {{
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--green);
+            box-shadow: 0 0 10px var(--green);
+            animation: pulse 2s ease infinite;
+        }}
+
+        @keyframes pulse {{
+            0%, 100% {{ opacity: 1; transform: scale(1); }}
+            50% {{ opacity: 0.5; transform: scale(0.8); }}
+        }}
+
+        .stats-bar {{
+            max-width: 900px;
+            margin: 0 auto 32px;
+            display: flex;
+            gap: 12px;
+        }}
+
+        .stat {{
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 20px;
+            flex: 1;
+        }}
+
+        .stat-label {{
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            color: var(--text-dim);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }}
+
+        .stat-value {{
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-bright);
+            font-family: 'IBM Plex Mono', monospace;
+        }}
+
+        .stat-value.accent {{ color: var(--accent); }}
+
+        .logs-container {{
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }}
+
+        .log-card {{
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px 22px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            opacity: 0;
+            transform: translateY(12px);
+            animation: slideIn 0.4s ease forwards;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }}
+
+        .log-card:hover {{
+            border-color: var(--border-bright);
+            box-shadow: 0 0 0 1px var(--accent-dim), inset 0 0 30px rgba(0,229,255,0.03);
+        }}
+
+        .log-card::before {{
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 3px;
+            background: var(--accent);
+            opacity: 0.4;
+        }}
+
+        .log-card:hover::before {{ opacity: 1; }}
+
+        @keyframes slideIn {{
+            to {{ opacity: 1; transform: translateY(0); }}
+        }}
+
+        .log-index {{
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 11px;
+            color: var(--text-dim);
+            min-width: 36px;
+        }}
+
+        .log-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr 2fr 1fr;
+            gap: 0 24px;
+            flex: 1;
+        }}
+
+        .log-field {{
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }}
+
+        .label {{
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 9px;
+            color: var(--text-dim);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }}
+
+        .value {{
+            font-size: 13px;
+            color: var(--text-bright);
+            font-weight: 400;
+        }}
+
+        .value.mono {{ font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--accent); }}
+
+        .truncate {{
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 220px;
+        }}
+
+        .log-pulse {{
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            opacity: 0.4;
+            flex-shrink: 0;
+        }}
+
+        .empty {{
+            text-align: center;
+            padding: 80px 0;
+            color: var(--text-dim);
+        }}
+
+        .empty-icon {{
+            font-size: 40px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }}
+
+        @media (max-width: 700px) {{
+            .log-grid {{ grid-template-columns: 1fr 1fr; row-gap: 10px; }}
+            .stats-bar {{ flex-wrap: wrap; }}
+            header {{ flex-direction: column; align-items: flex-start; gap: 12px; }}
+        }}
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-left">
+            <span class="header-tag">// sistema de monitoreo</span>
+            <h1>Panel <span>Yves</span></h1>
+        </div>
+        <div class="live-indicator">
+            <div class="live-dot"></div>
+            ACTIVO
+        </div>
+    </header>
+
+    <div class="stats-bar">
+        <div class="stat">
+            <div class="stat-label">Total registros</div>
+            <div class="stat-value accent">{len(logs)}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Último acceso</div>
+            <div class="stat-value mono" style="font-size:13px; padding-top:6px">
+                {logs[-1].get('time', '—') if logs else '—'}
+            </div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Última IP</div>
+            <div class="stat-value mono" style="font-size:14px; padding-top:5px">
+                {logs[-1].get('ip', '—') if logs else '—'}
+            </div>
+        </div>
+    </div>
+
+    <div class="logs-container">
+        {log_cards}
+        {empty_state}
+    </div>
+</body>
+</html>"""
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
